@@ -507,6 +507,13 @@ async function loadAll(){
 }
 function dbToInv(r){return{id:r.id,number:r.number,date:r.date,due:r.due,svc:r.svc,notes:r.notes,showDue:r.show_due!==false,invNotes:r.inv_notes,machine:r.machine,serial:r.serial,model:r.model,age:r.age,status:r.status,payMethod:r.pay_method,subtotal:r.subtotal,discount:r.discount,deposit:r.deposit,total:r.total,customer:r.customer||{},items:r.items||[]};}
 function invToDb(d){
+  var cust={
+    name:(d.customer&&d.customer.name)||'',
+    email:(d.customer&&d.customer.email)||'',
+    phone:(d.customer&&d.customer.phone)||'',
+    address:(d.customer&&d.customer.address)||''
+  };
+  var items=(d.items||[]).map(function(i){return{d:i.d||'',q:parseFloat(i.q)||0,p:parseFloat(i.p)||0,tot:parseFloat(i.tot)||0};});
   return{
     id:d.id,
     number:d.number||'',
@@ -526,8 +533,8 @@ function invToDb(d){
     discount:parseFloat(d.discount)||0,
     deposit:parseFloat(d.deposit)||0,
     total:parseFloat(d.total)||0,
-    customer:d.customer||{},
-    items:d.items||[]
+    customer:cust,
+    items:items
   };
 }
 function defaultCIs(){return[{name:'Service Call / Diagnostic',price:95,unit:'ea'},{name:'Labor',price:95,unit:'hr'},{name:'Filter 16x25x1',price:18,unit:'ea'},{name:'Capacitor Replacement',price:180,unit:'ea'},{name:'Emergency Service Call',price:195,unit:'ea'}];}
@@ -558,7 +565,7 @@ function go(p){
   if(p==='dashboard')rDash();
   else if(p==='invoices')rndrList();
   else if(p==='customers')rndrCusts();
-  else if(p==='new'&&!editId)initF();
+  else if(p==='new'){editId=null;initF();}
   else if(p==='settings')ldCo();
   else if(p==='items')rndrItems();
   else if(p==='templates')rndrTpls();
@@ -671,11 +678,23 @@ function bIT(list,compact){
       +'<td class="s">'+esc(inv.customer.name||'')+(inv.customer.phone?'<br><span style="font-size:11px;color:var(--tx3)">'+esc(inv.customer.phone)+'</span>':'')+'</td>';
     if(!compact){html+='<td style="font-size:12px;color:var(--tx2)">'+esc(inv.svc||'—')+'</td><td style="font-size:12px;color:var(--tx2)">'+(inv.machine?esc(inv.machine):'—')+'</td>';}
     html+='<td>'+fD(inv.date)+'</td><td>'+fD(inv.due)+'</td><td class="s m">'+fmt(inv.total)+'</td><td><span class="bdg '+(inv.status||'draft')+'">'+(inv.status||'draft').charAt(0).toUpperCase()+(inv.status||'draft').slice(1)+'</span></td>'
-      +'<td><div class="brow"><button class="btn xs act-edit" data-invid="'+inv.id+'">✏️ Edit</button>'+(inv.status!=='paid'?'<button class="btn xs G act-paid" data-invid="'+inv.id+'">✅ Paid</button>':'')+'</div></td></tr>';
+      +'<td><div class="brow"><button class="btn xs act-edit" data-invid="'+inv.id+'">✏️ Edit</button>'+(inv.status==='draft'?'<button class="btn xs act-pending" data-invid="'+inv.id+'" style="color:var(--amber);border-color:rgba(217,119,6,.3);background:var(--ad)">→ Pending</button>':'')+(inv.status!=='paid'?'<button class="btn xs G act-paid" data-invid="'+inv.id+'">✅ Paid</button>':'')+'</div></td></tr>';
   });
   html+='</tbody></table></div>';return html;
 }
-function wireTable(cid){var c=document.getElementById(cid);if(!c)return;c.addEventListener('click',function(e){var eb=e.target.closest('.act-edit');if(eb){e.stopPropagation();eInv(eb.dataset.invid);return;}var pb=e.target.closest('.act-paid');if(pb){e.stopPropagation();paidId=pb.dataset.invid;openOv('ov-paid');return;}var row=e.target.closest('.inv-row');if(row)openInv(row.dataset.invid);});}
+function wireTable(cid){
+  var c=document.getElementById(cid);if(!c)return;
+  c.addEventListener('click',function(e){
+    var eb=e.target.closest('.act-edit');
+    if(eb){e.stopPropagation();eInv(eb.dataset.invid);return;}
+    var ppb=e.target.closest('.act-pending');
+    if(ppb){e.stopPropagation();markPending(ppb.dataset.invid);return;}
+    var pb=e.target.closest('.act-paid');
+    if(pb){e.stopPropagation();paidId=pb.dataset.invid;openOv('ov-paid');return;}
+    var row=e.target.closest('.inv-row');
+    if(row)openInv(row.dataset.invid);
+  });
+}
 function rndrList(){
   var q=(gv('sq')||'').toLowerCase();var st=gv('ss');var srt=gv('srt');
   var list=invs.filter(function(inv){return(!q||((inv.customer.name||'').toLowerCase().indexOf(q)>=0)||(inv.number||'').toLowerCase().indexOf(q)>=0)&&(!st||inv.status===st);});
@@ -725,10 +744,27 @@ function eInv(id){
   var fs=document.getElementById('fc-showdue');if(fs)fs.checked=(inv.showDue!==false);
   document.getElementById('fc-disc').value=inv.discount||0;document.getElementById('fc-dep').value=inv.deposit||0;
   LIs=(inv.items||[]).map(function(it){return{id:uid(),d:it.d,q:it.q,p:it.p};});
-  bTBar();bCISb();uCDL();rndrLIs();go('new');
+  bTBar();bCISb();uCDL();rndrLIs();
+  // Show invoice form without resetting (editId is set)
+  document.querySelectorAll('.pg').forEach(function(x){x.classList.remove('on');});
+  document.querySelectorAll('.nb').forEach(function(x){x.classList.remove('on');});
+  var pg=document.getElementById('pg-new');if(pg)pg.classList.add('on');
+  var nb=document.getElementById('nb-new');if(nb)nb.classList.add('on');
+  document.getElementById('ftit').textContent='Edit Invoice';
 }
 
 // ========== MARK PAID ==========
+async function markPending(id){
+  var inv=invs.find(function(i){return i.id===id;});
+  if(!inv)return;
+  setSyncStatus('syncing');
+  try{
+    var r=await db.from('invoices').update({status:'pending'}).eq('id',id);
+    if(r.error)throw r.error;
+    inv.status='pending';
+    setSyncStatus('ok');rndrList();rDash();toast('Moved to Pending 🟡','s');
+  }catch(err){setSyncStatus('err');toast('Failed: '+(err.message||err),'e');}
+}
 async function doPaid(){
   var inv=invs.find(function(i){return i.id===paidId;});if(!inv)return;
   setSyncStatus('syncing');
