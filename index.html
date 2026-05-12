@@ -245,7 +245,11 @@ td.s{color:var(--tx);font-weight:500}td.m{font-family:'DM Mono',monospace;font-s
           <div class="fg"><label>Serial Number</label><input id="fc-ser"></div>
           <div class="fg"><label>Model Number</label><input id="fc-mod"></div>
           <div class="fg"><label>Age (years)</label><input type="number" id="fc-age" min="0"></div>
-          <div class="fg full"><label>Work Description</label><textarea id="fc-note"></textarea></div>
+          <div class="fg full"><label>Work Description / Notes (shown on invoice)</label><textarea id="fc-note" placeholder="Describe the work performed, parts used, warranty info..." style="min-height:80px"></textarea></div>
+        </div>
+        <div class="fs">Customer-Facing Invoice Notes <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--tx3)">(printed at bottom of invoice)</span></div>
+        <div class="fg full">
+          <textarea id="fc-inv-notes" placeholder="e.g. Payment due within 30 days. Thank you for choosing Cold Point Solutions!" style="min-height:70px"></textarea>
         </div>
       </div>
       <div class="card">
@@ -264,7 +268,6 @@ td.s{color:var(--tx);font-weight:500}td.m{font-family:'DM Mono',monospace;font-s
         <div class="sep"></div>
         <div class="tbox"><div class="tr2"><span class="tl">Subtotal</span><span class="tv" id="ts">$0.00</span></div><div class="tr2"><span class="tl">Discount</span><span class="tv" id="td2">-$0.00</span></div><div class="tr2"><span class="tl">Deposit</span><span class="tv" id="tdep">-$0.00</span></div><div class="tr2 grand"><span class="tl">Balance Due</span><span class="tv" id="tt">$0.00</span></div></div>
         <div class="sep"></div>
-        <div class="fg" style="margin-bottom:.6rem"><label>Invoice Notes</label><textarea id="fc-inv-notes" style="min-height:50px"></textarea></div>
         <button class="btn P" style="width:100%;justify-content:center;margin-bottom:6px" onclick="doPrev()">👁 Preview &amp; Send</button>
         <button class="btn" style="width:100%;justify-content:center" onclick="doSave('draft');go('invoices')">💾 Save Draft</button>
       </div>
